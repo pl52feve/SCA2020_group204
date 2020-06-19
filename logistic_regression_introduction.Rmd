@@ -1,0 +1,293 @@
+---
+title: "Logistic Regression - Introduction"
+author: "Bogo"
+output: pdf_document
+---
+
+# Set-Up
+
+Packages laden
+```{r }
+# Packages laden
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+Daten einlesen.  
+```{r }
+#Tabelle einlesen
+rawdata = read.csv("data_sss.csv")
+```
+
+# Daten vorbereiten
+
+Daten zusammenfassen.  
+
+```{r }
+#Daten zusammenfassen
+cat("Struktur der Daten:\n\n")
+str(rawdata)
+
+cat("\n\nZusammenfassung:\n\n")
+summary(rawdata)
+
+rawdata[rawdata$adults == 0 & rawdata$children == 0,]
+```
+
+Datenaufbereitung durchfuehren
+
+```{r }
+# to do
+clndata = rawdata
+```
+
+
+```{r }
+# Feature Engineering
+clndata$stays_in_nights = clndata$stays_in_week_nights + clndata$stays_in_weekend_nights
+
+# ... und viele weitere
+```
+
+EDA
+
+```{r}
+#wie viele wurden insgesamt gecancelled
+table(clndata$is_canceled)
+
+cat("\n")
+#ggf. Korrelationen abchecken
+cor(clndata$is_canceled, clndata[, c("lead_time", "stays_in_nights", "babies")])
+
+# ... und viele weitere
+
+#ggf Haeufigkeitstabellen ansehen
+meal_types = aggregate(is_canceled ~ meal, clndata, sum)
+meal_types$amount = table(clndata$meal)
+meal_types$percentage = meal_types$is_canceled / meal_types$amount
+meal_types
+
+# ... und viele weitere
+
+```
+
+# Logistic regression
+
+Beispiel: einfaches Modell mit 4 Features, das is_canceled vorhersagt
+
+* keine Aufteilung in Traings-/ Testdatensatz, der Einfachheit halber. Im Ernstfall jedoch erforderlich.
+* Rechnet etwas laenger, wenn man zu viele Features nimmt. Recht viele Beobachtungen.
+
+```{r}
+#Modell wird aufgestellt mit der glm()-Funktion (General Linear Model)
+m = glm(is_canceled ~ hotel + stays_in_nights + meal + lead_time, # im Prinzip gleich zum lm Modell
+        data = clndata, 
+        family = "binomial"       # es gibt weitere, individualisierbare Einstellungen, 
+                                  # aber der Standard is eigentlich ausreichend
+        )
+```
+
+
+
+## Zusammenfassung
+
+Soweit so bekannt
+
+```{r}
+#Zusammenfassung des Modells anzeigen
+summary(m)
+
+#Viele Parallelen zu LM
+# Zunaecht Formel mit allen Einflussfaktoren gegeben
+# Signifikante Parameter durch * gekennzeichnet
+# AIC bekannt als Bewertungskriterium (Hoher Wert -> Besseres Modell)
+# R_squared kann auch berechnet werden, allerdings nicht wie beim LM. In der Logistischen Regression macht es keinen Sinn Residuen zu betrachten (sind Unendlich!) daher wird der R_squared anders bewertet. Dafuer gibt es mehrere Methoden.
+```
+
+## Bewertung
+
+Um eine Bewertung durchzufuehren machen wir Predictions fuer die originalen Beobachtungen.
+
+Hier ist wichtig, dass der type mit "reponse" gewählt wird, damit man die "Wahrscheinlichkeit für Klasse 1 (in dem Fall eben is_canceled = 1) bekommt. Wenn das nicht passiert, bekommst du die log odds. Schwer intepretierbar.
+
+```{r}
+preds = data.frame(log_odds = predict(m, newdata = clndata),
+                   response = predict(m, newdata = clndata, type = "response")
+                   )
+
+head(preds)
+```
+
+Zunaechst muessen wir einen Threshhold festlegen (ab wann wir von Klasse 1 bzw. Klasse 0 ausgehen). Wir waehlen hier typischerweise 0.5.
+Also: Wenn die Wkt für Klasse 1 > .500 ist, dann wird Klasse 1 (also, is_canceled = 1) predicted, wenn die Wkt kleiner ist, dann wird Klasse 0 predicted
+
+```{r}
+thresh = .500
+
+preds = preds %>%
+      mutate(is_canceled_pred = ifelse(response > thresh, 1, 0))
+
+head(preds)
+```
+
+Dadurch haben wir in der Spalte "is_cancelled_pred" nun unsere Vorhersagen. Diese Vergleichen wir nun mit den tatsaechlichen Beobachtungen.
+
+
+
+```{r}
+preds$is_canceled = clndata$is_canceled
+
+head(preds)
+```
+
+Erste Interpretation (vom Kopf des DF): Es wurde 2 Mal eine Stornierung vorhergesagt und 4 Mal keine Stornierung. In der Realitaet wurde keine der 6 Buchungen storniert.
+Genauere Interpretation: In Zeile 2 hat unser Modell mit einer Wkt von ueber 94% eine Stornierung vorausgesagt. War es aber nicht. Schade.
+Eine solch kleine Stichprobe (nur der Kopf des DF) gibt uns allerdings noch keinen guten Ueberblick.
+
+Es gibt mehrere Guetekriterien, die wir betrachten koennen. Man koennte theoretisch die repsonse wkt als Fehler verstehen und dann haette man auch eine kardinale Skala, deren MSE, MAPE usw man errechnen könnte. Aber der Standard fuer Klassifikationen ist anders.
+
+### Genauigkeit
+
+Accuracy, oder "Genauigkeit", gibt an wie oft man "getroffen" hat.
+
+
+```{r}
+#Hier wurde der pipe-Operator "%>%" des dyplr-Packages genutzt. Die Berechnung funktioniert auch mit den aus der Uebung bekannten Formeln
+accuracy = preds %>%
+            summarise(acc = mean(is_canceled == is_canceled_pred)) # inner: habe ich getroffen {ja / nein}
+                                        # mean: Mittelwert davon, wie oft ich getroffen hab
+
+accuracy
+```
+
+Man haette auch die Treffer zaehlen koennen und diese durch die Anzahl teilen. Da Booleans aber als {0, 1} codiert werden in der Programmierung, kann man hier den Mittelwert nehmen.
+
+Ist eine Genauigkeit von 66% gut? Interpretation: In 66% der Faelle haben wir richtig predicted. Aber (eine Erklaerung aus dem Netz):
+
+* When to use?
+  * Accuracy is a valid choice of evaluation for classification problems which are well balanced and not skewed or No class imbalance.
+* Caveats
+* Let us say that our target class is very sparse. Do we want accuracy as a metric of our model performance? What if we are predicting if an asteroid will hit the earth? Just say No all the time. And you will be 99% accurate. My model can be reasonably accurate, but not at all valuable.
+
+Genauigkeit allein ist also kein ausreichendes Kriterium. Um einen besseren Ueberblick ueber die Guete zu erhalten, hilft uns die Wahrheitsmatrix (Konfusionsmatrix)
+
+### Confusion matrix
+
+
+```{r}
+#manuelle Berechnung der conf_matrix
+table(preds$is_canceled, preds$is_canceled_pred)
+
+
+#nicht der schoenste Weg, aber leicht interpretierbar
+conf_matrix = data.frame("canc_1" = c(13550, 30674), "canc_0" = c(8822, 66353), row.names = c("pred_1", "pred_0"))
+
+conf_matrix
+
+#automatischer weg, nicht so leicht nachzuvollziehen (vor allem fuer Nicht-Nutzer des dyplr-Packages)
+preds %>%
+  group_by(is_canceled, is_canceled_pred) %>%
+  summarise(n = n()) %>%
+  arrange(desc(is_canceled), desc(is_canceled_pred)) %>% # erkläre ich unten
+  pivot_wider(id_cols = is_canceled,
+              names_from = is_canceled_pred,
+              names_prefix = "predicted_",
+              values_from = n) %>%
+  mutate(total = predicted_0 + predicted_1,
+         correct_pred = case_when(is_canceled == 0 ~ predicted_0 / total,  # case when ist ein komplexeres ifelse
+                                  TRUE             ~ predicted_1 / total)) # True gilt al else in dem Fall
+```
+
+Die Confusion-Matrix ist wie folgt aufgebaut (betrachte conf_matrix):
+
+TP | FP  
+FN | TN  
+
+Wobei gilt: TP - True positive, TN - true negative, FP - False positve, FN - false negative.
+
+Hat ein Corona Test z.B. eine hohe FP Rate, dann beudetet das, dass der Test gern ein positives (im Sinne des Tests) Ergebnis liefert, obwohl man kein Corona hat.
+
+###Accuracy (Wdh.)
+
+```{r}
+#Nochmal Genauigkeit berechnen mit der conf_matrix
+(conf_matrix[1,1] + conf_matrix[2,2]) / sum(conf_matrix)
+```
+
+Ausgehend von der Confusion-Matrix koennen wir weiter interpretieren:
+
+```{r}
+#True Negatives betrachten
+conf_matrix[2,2] / sum(conf_matrix[,2])
+
+#True Positives betrachten
+conf_matrix[1,1] / sum(conf_matrix[,1])
+```
+
+Interpretation:
+* wir haben in 88 % der Fälle die nicht ge-cancel-ten richtig erkannt ("True negatives") -> gut!
+* wir haben nur in 30 % der Fälle die ge-cancel-ten richtig erkannt ("True positives") -> gar nicht mal so gut!
+
+Wir erkennen: Die Schwaeche unseres Modells ist das Erkennen einer Stornierung. Dies ist schade, da das Erkennen einer Stornierung uns sehr gluecklich machen wuerde.
+
+### Precision
+
+Precision = (TP)/(TP+FP)
+
+Aussage: "Wie gut bist du darin, die Ziel-Klasse (1 / positiv) zu finden"?
+
+```{r}
+#Precision berechnen (wie oben)
+conf_matrix[1,1] / sum(conf_matrix[,1])
+```
+
+Interpretation siehe oben.
+
+und hier noch eine Erklärung aus dem Netz:
+
+* When to use?
+  * Precision is a valid choice of evaluation metric when we want to be very sure of our prediction. For example: If we are building a system to predict if we should decrease the credit limit on a particular account, we want to be very sure about our prediction or it may result in customer dissatisfaction.
+* Caveats
+  * Being very precise means our model will leave a lot of credit defaulters untouched and hence lose money.
+
+### Recall
+
+Recall = (TP)/(TP+FN)
+
+Aussage: "Wenn du die Ziel-Klasse vorhersagst, wie oft liegst du damit richtig?" ODER ANDERS: Welchen Anteil unserer Ziel-Klassen-Vorhersage erzeugen wir keinen falschen Aufwand oder keine falsche Info.
+
+Unterschied: precision schaut auf die wirkliche Klasse, recall auf die Vorhersage. Aber beide sind extrem fokussiert auf die Ziel-Klasse. 
+
+```{r}
+#recall berechnen
+conf_matrix[1,1] / sum(conf_matrix[1,])
+
+```
+
+Interpretation: Wenn wir eine Stornierung voraussagen, dann liegen wir in 60% der Fälle richtig. Das heißt aber auch, dass 40% unser vorausgesagten Stornierungen gar keine sind. Man muss sich ueberlegen, was das fuer Auswirkungen hat.
+  
+Es existieren noch weitere Kennzahlen, die ihr recherchieren koennt.
+
+Zu guter letzt noch eine Moeglichkeit der Visualisierung:
+
+```{r}
+preds %>%
+  arrange(response, decreasing = FALSE) %>%
+  mutate(rank = 1:nrow(preds)) %>%
+  ggplot(aes (x = rank, y = response)) + geom_point(aes(color = as.factor(is_canceled)), shape = 4)
+
+```
+
+Die roten Kreuze sind Buchungen, die nicht storniert sind. Die blauen Kreuze sind Buchungen, die storniert wurden. Die Position auf der y-Achse gibt die Wkt an, mit der unser Modell 0 oder 1 voraussagt (unter 0.5 wird eine 0 vorausgesagt, ueber 0.5 wird eine 1 vorausgesagt). Ein optimales Ergebnis wuerde nur rote Punkte unterhalb der 0.5-Grenze zeigen und nur blaue Punkte ueberhalb der 0.5-Grenze.
+
+```{r}
+cntryocc= array(dim =c(2, length(unique(rawdata$country))) )
+
+for(i in (1: length(unique(rawdata$country)))){
+  cntry = unique(rawdata$country)[i]
+  cntryocc[,i]= c(cntry, length(rawdata$country[rawdata$country==cntry]))
+} 
+
+
+```

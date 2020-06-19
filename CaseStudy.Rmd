@@ -1,0 +1,53 @@
+---
+title: "Case Study"
+author: "Paulina, Leo, Benedikt und Felix"
+date: "17 6 2020"
+output: pdf_document
+---
+
+```{r }
+rawdata = read.csv("data_sss.csv")
+
+#Daten zusammenfassen
+cat("Struktur der Daten:\n\n")
+str(rawdata)
+
+cat("\n\nZusammenfassung:\n\n")
+summary(rawdata)
+
+#Kapazitäten der beiden Hotels speichern
+capLis = data.frame(Zimmer = 403,
+                    Parkpl = 20,
+                    Sitzpl = 200,
+                    Babysitzpl = 20)
+
+capAlga = data.frame(Zimmer = 318,
+                    Parkpl = 50,
+                    Sitzpl = 800,
+                    Babysitzpl = 10)
+
+
+
+clndata = rawdata
+
+#Datenbereinigung
+#Buchungen löschen bei denen keine Gastanzahl gegeben ist
+clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
+
+#tests
+#was ist mit Typ undefined?
+unique(rawdata$market_segment)
+unique(rawdata$meal)
+unique(rawdata$distribution_channel)
+unique(rawdata$country) #hier heißts NULL
+
+#andere Anzahl belegter Raumtypen als reservierte?
+unique(rawdata$reserved_room_type)
+unique(rawdata$assigned_room_type)
+
+#Kinder oder Babies ohne Erwachsenen da?
+rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
+
+
+
+```
