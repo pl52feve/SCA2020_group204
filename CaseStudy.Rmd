@@ -48,6 +48,16 @@ unique(rawdata$assigned_room_type)
 #Kinder oder Babies ohne Erwachsenen da?
 rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
 
+rawdata$date = paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year)
 
+Wochenendtab = data.frame(rawdata$date[1],FALSE)
+
+while(date != "31 August 2017"){
+  i = 3
+  if(i==5 | i==6 |i==7){
+    Wochenendtab
+  }
+  
+}
 
 ```
