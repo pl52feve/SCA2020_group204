@@ -4,7 +4,6 @@ author: "Paulina, Leo, Benedikt und Felix"
 date: "17 6 2020"
 output: pdf_document
 ---
-#nsdnc -was soll das heißen?- Starke Sache
 ```{r }
 rawdata = read.csv("data_sss.csv")
 
@@ -45,8 +44,8 @@ unique(rawdata$assigned_room_type)
 #Kinder oder Babies ohne Erwachsenen da?
 rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
 
-#Sys.setlocale("LC_ALL","English")
-rawdata$date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")
+Sys.setlocale("LC_ALL","English")
+rawdata$checkin_date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")
 
 #0–6 day of the week, starting on Sunday.
 rawdata$wkday=as.POSIXlt(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")$wday
@@ -54,14 +53,19 @@ rawdata$wkday=as.POSIXlt(paste(rawdata$arrival_date_day_of_month, rawdata$arriva
 #check for weekend (0,5,6)
 rawdata$wkend = rawdata$wkday > 4|rawdata$wkday == 0
 
-rawdata$stay_totaldays=rawdata$stays_in_week_nights+rawdata$stays_in_weekend_nights
+#nur die Gäste, die tatsächlich gekommen sind
+rawdata_showup = rawdata[rawdata$reservation_status== "Check-Out",]
+
+rawdata_showup$stay_totaldays=as.numeric(as.Date(rawdata_showup$reservation_status_date)-rawdata_showup$checkin_date)
+#komische hohe Werte!
+unique(rawdata_showup$stay_totaldays)
 
 #check for correctness of Weekend/weekday entries
-for(i in (1:length(rawdata$stay_totaldays))){
+for(i in (1:length(rawdata_showup$stay_totaldays))){
   wkendcntr=0
   wkdaycntr=0
-  datum = rawdata$wkdaymod[i]
-  total = rawdata$stay_totaldays[i]
+  datum = rawdata_showup$wkdaymod[i]
+  total = rawdata_showup$stay_totaldays[i]
   cmpltweeks = floor((datum+total)/7)
   rest = (datum+total) %% 7
   
@@ -70,8 +74,8 @@ for(i in (1:length(rawdata$stay_totaldays))){
     wkendcntr= wkendcntr+1
   }
   
-  rawdata$stays_in_week_nights_corr[i] = total-wkendcntr
-  rawdata$stays_in_weekend_nights_corr[i] = wkendcntr
+  rawdata_showup$stays_in_week_nights_corr[i] = total-wkendcntr
+  rawdata_showup$stays_in_weekend_nights_corr[i] = wkendcntr
   
 }
 
