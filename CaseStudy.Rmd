@@ -75,7 +75,7 @@ for(i in (1:length(rawdata$stay_totaldays))){
   
 }
 
-
+#hallotest
 
 #Datenbereinigung
 clndata = rawdata
