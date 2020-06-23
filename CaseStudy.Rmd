@@ -4,7 +4,7 @@ author: "Paulina, Leo, Benedikt und Felix"
 date: "17 6 2020"
 output: pdf_document
 ---
-#nsdnc -was soll das heißen?
+#nsdnc -was soll das heißen?- Starke Sache
 ```{r }
 rawdata = read.csv("data_sss.csv")
 
