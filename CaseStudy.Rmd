@@ -4,6 +4,9 @@ author: "Paulina, Leo, Benedikt und Felix"
 date: "17 6 2020"
 output: pdf_document
 ---
+
+
+Daten einlesen
 ```{r }
 rawdata = read.csv("data_sss.csv")
 
@@ -13,7 +16,23 @@ str(rawdata)
 
 cat("\n\nZusammenfassung:\n\n")
 summary(rawdata)
+```
 
+Daten bereinigen
+```{r }
+
+#Datenbereinigung
+clndata = rawdata
+#Buchungen löschen, die keine Anzahl an Tagen haben
+clndata = clndata[!(clndata$stay_totaldays == 0),]
+
+#Buchungen löschen bei denen keine Gastanzahl gegeben ist
+clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
+
+```
+
+
+```{r }
 #Kapazitäten der beiden Hotels speichern
 capLis = data.frame(Zimmer = 403,
                     Parkpl = 20,
@@ -24,10 +43,6 @@ capAlga = data.frame(Zimmer = 318,
                     Parkpl = 50,
                     Sitzpl = 800,
                     Babysitzpl = 10)
-
-
-
-
 
 
 #tests
@@ -79,13 +94,5 @@ for(i in (1:length(rawdata_showup$stay_totaldays))){
   
 }
 
-#hallotest
 
-#Datenbereinigung
-clndata = rawdata
-#Buchungen löschen, die keine Anzahl an Tagen haben
-clndata = clndata[!(clndata$stay_totaldays == 0),]
-
-#Buchungen löschen bei denen keine Gastanzahl gegeben ist
-clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
 ```
