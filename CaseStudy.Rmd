@@ -30,7 +30,7 @@ capAlga = data.frame(Zimmer = 318,
 
 
 
-#tests
+#testst
 #was ist mit Typ undefined?
 unique(rawdata$market_segment)
 unique(rawdata$meal)
