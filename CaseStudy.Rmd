@@ -27,9 +27,6 @@ capAlga = data.frame(Zimmer = 318,
 
 
 
-
-
-
 #tests
 #was ist mit Typ undefined?
 unique(rawdata$market_segment)
@@ -44,19 +41,26 @@ unique(rawdata$assigned_room_type)
 #Kinder oder Babies ohne Erwachsenen da?
 rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
 
+#das CHeck in Datum als as.Date Datenformat abspeichern
 Sys.setlocale("LC_ALL","English")
 rawdata$checkin_date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")
 
 #0–6 day of the week, starting on Sunday.
 rawdata$wkday=as.POSIXlt(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")$wday
 
-#check for weekend (0,5,6)
-rawdata$wkend = rawdata$wkday > 4|rawdata$wkday == 0
+#für einfachere Nutzung wird Sonntag zu 7 gesetzt
+rawdata$wkday[rawdata$wkday==0] = 7
+
+#check for weekend (5,6,7)
+rawdata$wkend = rawdata$wkday > 4
 
 #nur die Gäste, die tatsächlich gekommen sind
 rawdata_showup = rawdata[rawdata$reservation_status== "Check-Out",]
 
+#bei Unteschied gleich null trotzdem auf 1 setzen, da Zimmer auch ohne Übernachtung bis zum nächsten Tag belegt ist?
 rawdata_showup$stay_totaldays=as.numeric(as.Date(rawdata_showup$reservation_status_date)-rawdata_showup$checkin_date)
+
+
 #komische hohe Werte!
 unique(rawdata_showup$stay_totaldays)
 
@@ -64,10 +68,10 @@ unique(rawdata_showup$stay_totaldays)
 for(i in (1:length(rawdata_showup$stay_totaldays))){
   wkendcntr=0
   wkdaycntr=0
-  datum = rawdata_showup$wkdaymod[i]
+  checkin_wkday = rawdata_showup$wkday[i]
   total = rawdata_showup$stay_totaldays[i]
-  cmpltweeks = floor((datum+total)/7)
-  rest = (datum+total) %% 7
+  cmpltweeks = floor((checkin_wkday+total)/7)
+  rest = (checkin_wkday+total) %% 7
   
   wkendcntr= cmpltweeks*2
   if(rest == 6){
@@ -79,7 +83,6 @@ for(i in (1:length(rawdata_showup$stay_totaldays))){
   
 }
 
-#hallotest
 
 #Datenbereinigung
 clndata = rawdata
