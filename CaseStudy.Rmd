@@ -103,4 +103,26 @@ for(i in (1:length(rawdata_showup$stay_totaldays))){
 }
 
 
+Auslastung = data.frame( Datum = seq(as.Date(rawdata_showup$checkin_date[1]), 
+                 as.Date(tail(rawdata_showup$reservation_status_date,n=1)), 
+                 by="days"))
+
+Auslastung$ZimAuslResort= 0
+rawdata_showup_resort = rawdata_showup[rawdata_showup$hotel == "Resort Hotel",]
+
+for(i in (1:length(rawdata_showup_resort$stay_totaldays))){
+  
+  for (j in 1:rawdata_showup_resort$stay_totaldays[i]){
+  Auslastung$ZimAuslResort[j] = Auslastung$ZimAuslResort[j]+1;
+  }
+  
+  
+}
+
+
+
+
+
+
+
 ```
