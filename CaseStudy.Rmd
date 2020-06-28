@@ -21,13 +21,22 @@ summary(rawdata)
 Daten bereinigen
 ```{r }
 
+#library (stringr)
+
 #Datenbereinigung
 clndata = rawdata
+
+#repeated_guest "no" mit "0" ersetzen
+clndata$is_repeated_guest <- stringr::str_replace_all (clndata$is_repeated_guest,pattern="no",repl="0")
+
+summary(clndata)
+
 #Buchungen löschen, die keine Anzahl an Tagen haben
 clndata = clndata[!(clndata$stay_totaldays == 0),]
 
 #Buchungen löschen bei denen keine Gastanzahl gegeben ist
 clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
+
 
 ```
 
@@ -118,10 +127,6 @@ for(i in (1:length(rawdata_showup_resort$stay_totaldays))){
   
   
 }
-
-
-
-
 
 
 
