@@ -109,6 +109,8 @@ clndatacity %>% count(reserved_room_type,adults,children,meal)
 # Anzahl einfügen
 ```
 
+
+```{r }
 #Kapazitäten der beiden Hotels speichern
 capLis = data.frame(Zimmer = 403,
                     Parkpl = 20,
@@ -119,10 +121,6 @@ capAlga = data.frame(Zimmer = 318,
                     Parkpl = 50,
                     Sitzpl = 800,
                     Babysitzpl = 10)
-
-
-
-
 
 
 #was ist mit Typ undefined?
@@ -144,12 +142,16 @@ rawdata$checkin_date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$
 #0–6 day of the week, starting on Sunday.
 rawdata$wkday=as.POSIXlt(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")$wday
 
-#check for weekend (0,5,6)
-rawdata$wkend = rawdata$wkday > 4|rawdata$wkday == 0
+#für einfachere Nutzung wird Sonntag zu 7 gesetzt
+rawdata$wkday[rawdata$wkday==0] = 7
+#check for weekend (5,6,7)
+rawdata$wkend = rawdata$wkday > 4
 
 #nur die Gäste, die tatsächlich gekommen sind
 rawdata_showup = rawdata[rawdata$reservation_status== "Check-Out",]
 
+
+#bei Unteschied gleich null trotzdem auf 1 setzen, da Zimmer auch ohne Übernachtung bis zum nächsten Tag belegt ist?
 rawdata_showup$stay_totaldays=as.numeric(as.Date(rawdata_showup$reservation_status_date)-rawdata_showup$checkin_date)
 #komische hohe Werte!
 unique(rawdata_showup$stay_totaldays)
@@ -158,10 +160,10 @@ unique(rawdata_showup$stay_totaldays)
 for(i in (1:length(rawdata_showup$stay_totaldays))){
   wkendcntr=0
   wkdaycntr=0
-  datum = rawdata_showup$wkdaymod[i]
+  checkin_wkday = rawdata_showup$wkday[i]
   total = rawdata_showup$stay_totaldays[i]
-  cmpltweeks = floor((datum+total)/7)
-  rest = (datum+total) %% 7
+  cmpltweeks = floor((checkin_wkday+total)/7)
+  rest = (checkin_wkday+total) %% 7
   
   wkendcntr= cmpltweeks*2
   if(rest == 6){
@@ -173,19 +175,92 @@ for(i in (1:length(rawdata_showup$stay_totaldays))){
   
 }
 
-Auslastung = data.frame( Datum = seq(as.Date(rawdata_showup$checkin_date[1]), 
-                 as.Date(tail(rawdata_showup$reservation_status_date,n=1)), 
+Auslastung = data.frame(Datum = seq(as.Date(min(rawdata_showup$checkin_date)), 
+                 as.Date(max(rawdata_showup$reservation_status_date)), 
                  by="days"))
+room_types= sort(unique(rawdata_showup$assigned_room_type))
+
+Auslastung$A = 0;
+Auslastung$B = 0;
+Auslastung$C = 0;
+Auslastung$D = 0;
+Auslastung$E = 0;
+Auslastung$F = 0;
+Auslastung$G = 0;
+Auslastung$H = 0;
+Auslastung$I = 0;
+Auslastung$K = 0;
+
+
 Auslastung$ZimAuslResort= 0
+
 rawdata_showup_resort = rawdata_showup[rawdata_showup$hotel == "Resort Hotel",]
+
+
 for(i in (1:length(rawdata_showup_resort$stay_totaldays))){
   
-  for (j in 1:rawdata_showup_resort$stay_totaldays[i]){
+idx = which(Auslastung$Datum == rawdata_showup_resort$checkin_date[i])
+
+#zählen welche Zimmetypen gebucht worden
+switch(rawdata_showup_resort$assigned_room_type[i], 
+       "A" = {Auslastung$A[idx] = Auslastung$A[idx]+1},
+       "B" = {Auslastung$B[idx] = Auslastung$B[idx]+1},
+       "C" = {Auslastung$C[idx] = Auslastung$C[idx]+1},
+       "D" = {Auslastung$D[idx] = Auslastung$D[idx]+1},
+       "E" = {Auslastung$E[idx] = Auslastung$E[idx]+1},
+       "F" = {Auslastung$F[idx] = Auslastung$F[idx]+1},
+       "G" = {Auslastung$G[idx] = Auslastung$G[idx]+1},
+       "H" = {Auslastung$H[idx] = Auslastung$H[idx]+1},
+       "I" = {Auslastung$I[idx] = Auslastung$I[idx]+1},
+       "K" = {Auslastung$K[idx] = Auslastung$K[idx]+1}
+       
+)
+
+  
+  for (j in idx:(idx+rawdata_showup_resort$stay_totaldays[i]-1)){
+    
   Auslastung$ZimAuslResort[j] = Auslastung$ZimAuslResort[j]+1;
   }
   
   
 }
+
+
+#Aulastung Lissabon
+rawdata_showup_Lis = rawdata_showup[rawdata_showup$hotel == "City Hotel",]
+
+Auslastung$ZimAuslLis= 0
+
+for(i in (1:length(rawdata_showup_Lis$stay_totaldays))){
+  
+idx = which(Auslastung$Datum == rawdata_showup_Lis$checkin_date[i])
+
+#zählen welche Zimmetypen gevßbucht worden
+switch(rawdata_showup_resort$assigned_room_type[i], 
+       "A" = {Auslastung$A[idx] = Auslastung$A[idx]+1},
+       "B" = {Auslastung$B[idx] = Auslastung$B[idx]+1},
+       "C" = {Auslastung$C[idx] = Auslastung$C[idx]+1},
+       "D" = {Auslastung$D[idx] = Auslastung$D[idx]+1},
+       "E" = {Auslastung$E[idx] = Auslastung$E[idx]+1},
+       "F" = {Auslastung$F[idx] = Auslastung$F[idx]+1},
+       "G" = {Auslastung$G[idx] = Auslastung$G[idx]+1},
+       "H" = {Auslastung$H[idx] = Auslastung$H[idx]+1},
+       "I" = {Auslastung$I[idx] = Auslastung$I[idx]+1},
+       "K" = {Auslastung$K[idx] = Auslastung$K[idx]+1}
+       
+)
+  
+  for (j in idx:(idx+rawdata_showup_Lis$stay_totaldays[i]-1)){
+    
+  Auslastung$ZimAuslLis[j] = Auslastung$ZimAuslLis[j]+1;
+  }
+  
+  
+}
+
+#beide mega schllecht ausgelastet! Stimmt so?
+summary(Auslastung$ZimAuslLis)
+summary(Auslastung$ZimAuslResort)
 
 
 #Datenbereinigung
