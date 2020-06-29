@@ -17,6 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Laden des GGally Packages
 library("GGally")
 library("knitr")
+library ("stringr")
 ```
 
 
@@ -41,19 +42,39 @@ clndata$is_repeated_guest <- stringr::str_replace_all (clndata$is_repeated_guest
 summary(clndata)
 clndatacity = subset(clndata, hotel== "Resort Hotel")
 clndataresort = subset(clndata, hotel== "City Hotel")
-#library (stringr)
+
+
+#was ist mit Typ undefined?
+unique(rawdata$market_segment)
+unique(rawdata$meal)
+unique(rawdata$distribution_channel)
+unique(rawdata$country) #hier heißts NULL
+
+#andere Anzahl belegter Raumtypen als reservierte?
+unique(rawdata$reserved_room_type)
+unique(rawdata$assigned_room_type)
+
+#Kinder oder Babies ohne Erwachsenen da?
+rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
+
+
 
 #Datenbereinigung
 clndata = rawdata
+
+
+#Buchungen löschen, die keine Anzahl an Tagen haben
+clndata = clndata[!(clndata$stay_totaldays == 0),]
+
+#Buchungen löschen bei denen keine Gastanzahl gegeben ist
+clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
 
 #repeated_guest "no" mit "0" ersetzen
 clndata$is_repeated_guest <- stringr::str_replace_all (clndata$is_repeated_guest,pattern="no",repl="0")
 
 summary(clndata)
 
-```
-
-```{r }
+#aggregate Funktionen
 adr_roomtype = aggregate(adr ~ reserved_room_type,data=clndata, mean)
 adr_roomtype
 adr_assigned_roomtype = aggregate(adr ~ assigned_room_type,data=clndata, mean)
@@ -109,6 +130,7 @@ clndatacity %>% count(reserved_room_type,adults,children,meal)
 # Anzahl einfügen
 ```
 
+```{r }
 #Kapazitäten der beiden Hotels speichern
 capLis = data.frame(Zimmer = 403,
                     Parkpl = 20,
@@ -124,20 +146,6 @@ capAlga = data.frame(Zimmer = 318,
 
 
 
-
-#was ist mit Typ undefined?
-unique(rawdata$market_segment)
-unique(rawdata$meal)
-unique(rawdata$distribution_channel)
-unique(rawdata$country) #hier heißts NULL
-
-#andere Anzahl belegter Raumtypen als reservierte?
-unique(rawdata$reserved_room_type)
-unique(rawdata$assigned_room_type)
-
-#Kinder oder Babies ohne Erwachsenen da?
-rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
-
 Sys.setlocale("LC_ALL","English")
 rawdata$checkin_date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")
 
@@ -151,6 +159,7 @@ rawdata$wkend = rawdata$wkday > 4|rawdata$wkday == 0
 rawdata_showup = rawdata[rawdata$reservation_status== "Check-Out",]
 
 rawdata_showup$stay_totaldays=as.numeric(as.Date(rawdata_showup$reservation_status_date)-rawdata_showup$checkin_date)
+
 #komische hohe Werte!
 unique(rawdata_showup$stay_totaldays)
 
@@ -188,11 +197,4 @@ for(i in (1:length(rawdata_showup_resort$stay_totaldays))){
 }
 
 
-#Datenbereinigung
-clndata = rawdata
-#Buchungen löschen, die keine Anzahl an Tagen haben
-clndata = clndata[!(clndata$stay_totaldays == 0),]
-
-#Buchungen löschen bei denen keine Gastanzahl gegeben ist
-clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
 ```
