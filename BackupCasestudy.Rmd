@@ -18,16 +18,11 @@ knitr::opts_chunk$set(echo = TRUE)
 # Laden des GGally Packages
 library("GGally")
 library("knitr")
-library("zoo")
-library("forecast")
-library("ggplot2")
 ```
 
 ```{r echo=FALSE}
 rawdata = read.csv("data_sss.csv")
 clndata=rawdata
-clndatacity = subset(clndata, hotel== "City Hotel")
-clndataresort = subset(clndata, hotel== "Resort Hotel")
 
 #Daten zusammenfassen
 cat("Struktur der Daten:\n\n")
@@ -36,31 +31,8 @@ cat("Struktur der Daten:\n\n")
 cat("\n\nZusammenfassung:\n\n")
 #summary(rawdata)
 
-#####
-#Perioden erstellen
-
-# Spalte Periode in clndata_Period erstellen
-clndata <- tidyr::unite(clndata, Period, "arrival_date_day_of_month","arrival_date_month","arrival_date_year","arrival_date_day_of_month", sep ="-", remove= FALSE)
-
-clndata$Period = as.Date(clndata$Period,format='%d-%B-%Y')
-
-clndata$Period <- format(as.Date(clndata$Period), "%Y-%m")
-
-
-# Spalte Periode in clndata_Period erstellen
-clndatacity <- tidyr::unite(clndatacity, Period, "arrival_date_day_of_month","arrival_date_month","arrival_date_year","arrival_date_day_of_month", sep ="-", remove= FALSE)
-
-clndatacity$Period = as.Date(clndatacity$Period,format='%d-%B-%Y')
-
-clndatacity$Period <- format(as.Date(clndatacity$Period), "%Y-%m")
-
-
-# Spalte Periode in clndata_Period erstellen
-clndataresort<- tidyr::unite(clndataresort, Period, "arrival_date_day_of_month","arrival_date_month","arrival_date_year","arrival_date_day_of_month", sep ="-", remove= FALSE)
-
-clndataresort$Period = as.Date(clndataresort$Period,format='%d-%B-%Y')
-
-clndataresort$Period <- format(as.Date(clndataresort$Period), "%Y-%m")
+clndatacity = subset(clndata, hotel== "City Hotel")
+clndataresort = subset(clndata, hotel== "Resort Hotel")
 
 
 #Kapazitäten der beiden Hotels speichern
@@ -168,103 +140,15 @@ overview_room_types_resort = merge(aggregateadr, count_room_types, by.x=c("Room_
 
 kable(overview_room_types_resort, caption = "overview_room_types_resort")
 
-#########################
+
+# Spalte Periode in service erstellen
+clndata <- tidyr::unite(clndata, Period, "arrival_date_month","arrival_date_year", sep =".", remove= FALSE)
+
+Period_adr_all= aggregate(adr ~ Period, data=clndata,sum)
 
 #Zeitreihenanalyse
 
-#Zeitreihenanalyse adr
-# alle Daten
-
-Periodadr_overall= aggregate(adr ~ Period, data=clndata,sum)
-
-#clndata_adr_TS  = ts(clndata$adr, frequency = 12)
-
-#M_Shangh = ets(clndata_adr_TS, model = "ZZZ")
-
-### city
-
-Periodadr_city= aggregate(adr ~ Period, data=clndatacity,sum)
-
-#clndatacity_adr_TS = ts(clndatacity$adr, frequency = 12)
-
-
-###resort
-
-Periodadr_resort= aggregate(adr ~ Period, data=clndataresort,sum)
-
-#clndata_TS = ts(clndataresort$adr, frequency = 12)
-
-ggplot(data = NULL, aes(ymin = 0, ymax = 0, group =1)) + 
-  
-  # Erste Linie hinzufuegen
-  geom_line(data=Periodadr_overall, aes(x = Period,
-                             # Y-Achse = Kombination von fitting Werten und Forecast Werten
-                             y = adr, 
-                             # Beschriftung fuer Farbe festlegen
-                             colour = 'overall')) +
-  
-  # Zweite Linie hinzufuegen
-  geom_line(data=Periodadr_city, aes(x = Period,
-                             # Y-Achse = Kombination von fitting Werten und Forecast Werten
-                             y = adr, 
-                             # Beschriftung fuer Farbe festlegen
-                             colour = 'city')) +
-  
-  # dritte Linie hinzufuegen
-geom_line(data=Periodadr_resort, aes(x = Period,
-                             # Y-Achse = Kombination von fitting Werten und Forecast Werten
-                             y = adr, 
-                             # Beschriftung fuer Farbe festlegen
-                             colour = 'resort')) + ggtitle("Comparison adr") + xlab("Period")+ ylab("adr") +
-  
-  # Farben fuer Beschriftungen festlegen
-  scale_colour_manual(breaks = c("overall", "city","resort"), values = c("black", "blue","red"))  + theme(axis.text.x = element_text(size = 7, angle=270, hjust=1))
-
-
-###
-#canceled 
-#overall
-Periodcanceled_overall = aggregate(is_canceled ~ Period, data=clndata,mean)
-
-#clndata_TS  = ts(clndata$is_canceled, frequency = 12)
-
-#city
-Periodcanceled_city = aggregate(is_canceled ~ Period, data=clndatacity,mean)
-
-#clndata_TS  = ts(clndatacity$is_canceled, frequency = 12)
-
-#resort
-
-Periodcanceled_resort = aggregate(is_canceled ~ Period, data=clndataresort,mean)
-
-#clndata_TS  = ts(clndataresort$is_canceled, frequency = 12)
-
-
-ggplot(data = NULL, aes(ymin = 0, ymax = 0, group =1)) + 
-  
-  # Erste Linie hinzufuegen
-  geom_line(data=Periodcanceled_overall, aes(x = Period,
-                             # Y-Achse = Kombination von fitting Werten und Forecast Werten
-                             y = is_canceled, 
-                             # Beschriftung fuer Farbe festlegen
-                             colour = 'overall')) +
-  
-  # Zweite Linie hinzufuegen
-  geom_line(data=Periodcanceled_city, aes(x = Period,
-                             # Y-Achse = Kombination von fitting Werten und Forecast Werten
-                             y = is_canceled, 
-                             # Beschriftung fuer Farbe festlegen
-                             colour = 'city')) +
-  
-  # dritte Linie hinzufuegen
-geom_line(data=Periodcanceled_resort, aes(x = Period,
-                             # Y-Achse = Kombination von fitting Werten und Forecast Werten
-                             y = is_canceled, 
-                             # Beschriftung fuer Farbe festlegen
-                             colour = 'resort')) + ggtitle("Comparison is_canceled") + xlab("Period")+ ylab("is_canceled") +
-  
-  # Farben fuer Beschriftungen festlegen
-  scale_colour_manual(breaks = c("overall", "city","resort"), values = c("black", "blue","red"))  + theme(axis.text.x = element_text(size = 7, angle=270, hjust=1))
+clndata_TS  = ts(clndata$adr, frequency = 12)
 
 ```
 
