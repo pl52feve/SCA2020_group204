@@ -2,8 +2,25 @@
 title: "Case Study"
 author: "Paulina, Leo, Benedikt und Felix"
 date: "17 6 2020"
-output: pdf_document
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+  html_document:
+    df_print: paged
 ---
+\pagebreak
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Laden des GGally Packages
+library("GGally")
+library("knitr")
+```
+
+
+Daten einlesen
 ```{r }
 rawdata = read.csv("data_sss.csv")
 
@@ -13,6 +30,84 @@ str(rawdata)
 
 cat("\n\nZusammenfassung:\n\n")
 summary(rawdata)
+```
+
+Daten bereinigen
+```{r }
+#Datenbereinigung
+clndata = rawdata
+#repeated_guest "no" mit "0" ersetzen
+clndata$is_repeated_guest <- stringr::str_replace_all (clndata$is_repeated_guest,pattern="no",repl="0")
+summary(clndata)
+clndatacity = subset(clndata, hotel== "Resort Hotel")
+clndataresort = subset(clndata, hotel== "City Hotel")
+#library (stringr)
+
+#Datenbereinigung
+clndata = rawdata
+
+#repeated_guest "no" mit "0" ersetzen
+clndata$is_repeated_guest <- stringr::str_replace_all (clndata$is_repeated_guest,pattern="no",repl="0")
+
+summary(clndata)
+
+```
+
+```{r }
+adr_roomtype = aggregate(adr ~ reserved_room_type,data=clndata, mean)
+adr_roomtype
+adr_assigned_roomtype = aggregate(adr ~ assigned_room_type,data=clndata, mean)
+adr_assigned_roomtype
+agent = aggregate(is_canceled ~ agent,data=clndata, mean)
+agent
+company = aggregate(is_canceled ~ company,data=clndata, mean)
+company
+deposit = aggregate(is_canceled ~ deposit_type,data=clndata, mean)
+deposit
+customer_type = aggregate(is_canceled ~ customer_type,data=clndata, mean)
+customer_type
+previous_bookings_not_canceled = aggregate(is_canceled ~ previous_bookings_not_canceled,data=clndata, mean)
+previous_bookings_not_canceled
+is_repeated_guest = aggregate(is_canceled ~ is_repeated_guest,data=clndata, mean)
+is_repeated_guest
+distribution_channel = aggregate(is_canceled ~ distribution_channel,data=clndata, mean)
+distribution_channel
+market_segment = aggregate(is_canceled ~ market_segment,data=clndata, mean)
+market_segment
+meal = aggregate(is_canceled ~ meal,data=clndata, mean)
+meal
+country = aggregate(is_canceled ~ country,data=clndata, mean)
+country
+country <- country[order(country$is_canceled,decreasing=T),]
+head(country[c("country","is_canceled")],5)
+arrival_date_year = aggregate(is_canceled ~ arrival_date_year,data=clndata, mean)
+arrival_date_year
+arrival_date_month = aggregate(is_canceled ~ arrival_date_month,data=clndata, mean)
+arrival_date_month
+hotel = aggregate(is_canceled ~ hotel,data=clndata, mean)
+hotel
+AggregateIFR = aggregate(clndata$adr, list(clndata$reserved_room_type,clndata$adults), mean)
+AggregateIFR
+#median passt sehr gut
+AggregateIFR1 = aggregate(clndatacity$adr, list(clndatacity$reserved_room_type,clndatacity$adults), median)
+AggregateIFR1
+AggregateIFR2 = aggregate(clndatacity$adr, list(clndatacity$reserved_room_type,clndatacity$adults,clndatacity$children,clndatacity$meal), median)
+AggregateIFR2
+AggregateIFR2 <- AggregateIFR2[order(AggregateIFR2$Group.1,decreasing=FALSE),]
+colnames(AggregateIFR2) = c("Room_Type","adults","children","meal","adr")
+AggregateIFR2 <- subset(AggregateIFR2, !meal
+ == "Undefined")
+AggregateIFR2 <- subset(AggregateIFR2, !adults == "0")
+AggregateIFR2 <- subset(AggregateIFR2, !adr == "0")
+kable(AggregateIFR2, caption = "AggregateOTDShangh")
+clndatacity <- subset(clndatacity, !meal
+ == "Undefined")
+clndatacity <- subset(clndatacity, !adults == "0")
+clndatacity <- subset(clndatacity, !adr == "0")
+require(dplyr)
+clndatacity %>% count(reserved_room_type,adults,children,meal)
+# Anzahl einfügen
+```
 
 #Kapazitäten der beiden Hotels speichern
 capLis = data.frame(Zimmer = 403,
@@ -30,7 +125,6 @@ capAlga = data.frame(Zimmer = 318,
 
 
 
-#testst
 #was ist mit Typ undefined?
 unique(rawdata$market_segment)
 unique(rawdata$meal)
@@ -79,7 +173,20 @@ for(i in (1:length(rawdata_showup$stay_totaldays))){
   
 }
 
-#hallotest
+Auslastung = data.frame( Datum = seq(as.Date(rawdata_showup$checkin_date[1]), 
+                 as.Date(tail(rawdata_showup$reservation_status_date,n=1)), 
+                 by="days"))
+Auslastung$ZimAuslResort= 0
+rawdata_showup_resort = rawdata_showup[rawdata_showup$hotel == "Resort Hotel",]
+for(i in (1:length(rawdata_showup_resort$stay_totaldays))){
+  
+  for (j in 1:rawdata_showup_resort$stay_totaldays[i]){
+  Auslastung$ZimAuslResort[j] = Auslastung$ZimAuslResort[j]+1;
+  }
+  
+  
+}
+
 
 #Datenbereinigung
 clndata = rawdata
