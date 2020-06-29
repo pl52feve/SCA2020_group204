@@ -1,0 +1,91 @@
+---
+title: "Case Study"
+author: "Paulina, Leo, Benedikt und Felix"
+date: "17 6 2020"
+output: pdf_document
+---
+```{r }
+rawdata = read.csv("data_sss.csv")
+
+#Daten zusammenfassen
+cat("Struktur der Daten:\n\n")
+str(rawdata)
+
+cat("\n\nZusammenfassung:\n\n")
+summary(rawdata)
+
+#Kapazitäten der beiden Hotels speichern
+capLis = data.frame(Zimmer = 403,
+                    Parkpl = 20,
+                    Sitzpl = 200,
+                    Babysitzpl = 20)
+
+capAlga = data.frame(Zimmer = 318,
+                    Parkpl = 50,
+                    Sitzpl = 800,
+                    Babysitzpl = 10)
+
+
+
+
+
+
+#testst
+#was ist mit Typ undefined?
+unique(rawdata$market_segment)
+unique(rawdata$meal)
+unique(rawdata$distribution_channel)
+unique(rawdata$country) #hier heißts NULL
+
+#andere Anzahl belegter Raumtypen als reservierte?
+unique(rawdata$reserved_room_type)
+unique(rawdata$assigned_room_type)
+
+#Kinder oder Babies ohne Erwachsenen da?
+rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
+
+Sys.setlocale("LC_ALL","English")
+rawdata$checkin_date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")
+
+#0–6 day of the week, starting on Sunday.
+rawdata$wkday=as.POSIXlt(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")$wday
+
+#check for weekend (0,5,6)
+rawdata$wkend = rawdata$wkday > 4|rawdata$wkday == 0
+
+#nur die Gäste, die tatsächlich gekommen sind
+rawdata_showup = rawdata[rawdata$reservation_status== "Check-Out",]
+
+rawdata_showup$stay_totaldays=as.numeric(as.Date(rawdata_showup$reservation_status_date)-rawdata_showup$checkin_date)
+#komische hohe Werte!
+unique(rawdata_showup$stay_totaldays)
+
+#check for correctness of Weekend/weekday entries
+for(i in (1:length(rawdata_showup$stay_totaldays))){
+  wkendcntr=0
+  wkdaycntr=0
+  datum = rawdata_showup$wkdaymod[i]
+  total = rawdata_showup$stay_totaldays[i]
+  cmpltweeks = floor((datum+total)/7)
+  rest = (datum+total) %% 7
+  
+  wkendcntr= cmpltweeks*2
+  if(rest == 6){
+    wkendcntr= wkendcntr+1
+  }
+  
+  rawdata_showup$stays_in_week_nights_corr[i] = total-wkendcntr
+  rawdata_showup$stays_in_weekend_nights_corr[i] = wkendcntr
+  
+}
+
+#hallotest
+
+#Datenbereinigung
+clndata = rawdata
+#Buchungen löschen, die keine Anzahl an Tagen haben
+clndata = clndata[!(clndata$stay_totaldays == 0),]
+
+#Buchungen löschen bei denen keine Gastanzahl gegeben ist
+clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
+```
