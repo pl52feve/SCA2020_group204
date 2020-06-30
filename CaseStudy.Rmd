@@ -38,7 +38,6 @@ Daten bereinigen
 clndata = rawdata
 #repeated_guest "no" mit "0" ersetzen
 clndata$is_repeated_guest <- stringr::str_replace_all (clndata$is_repeated_guest,pattern="no",repl="0")
-summary(clndata)
 clndatacity = subset(clndata, hotel== "Resort Hotel")
 clndataresort = subset(clndata, hotel== "City Hotel")
 #library (stringr)
@@ -48,6 +47,12 @@ clndata = rawdata
 
 #repeated_guest "no" mit "0" ersetzen
 clndata$is_repeated_guest <- stringr::str_replace_all (clndata$is_repeated_guest,pattern="no",repl="0")
+
+#Buchungen löschen, die keine Anzahl an Tagen haben
+clndata = clndata[!(clndata$stay_totaldays == 0),]
+
+#Buchungen löschen bei denen keine Gastanzahl gegeben ist
+clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
 
 summary(clndata)
 
@@ -151,7 +156,7 @@ rawdata$wkend = rawdata$wkday > 4
 rawdata_showup = rawdata[rawdata$reservation_status== "Check-Out",]
 
 
-#bei Unteschied gleich null trotzdem auf 1 setzen, da Zimmer auch ohne Übernachtung bis zum nächsten Tag belegt ist?
+#bei Unterschied gleich null trotzdem auf 1 setzen, da Zimmer auch ohne Übernachtung bis zum nächsten Tag belegt ist?
 rawdata_showup$stay_totaldays=as.numeric(as.Date(rawdata_showup$reservation_status_date)-rawdata_showup$checkin_date)
 #komische hohe Werte!
 unique(rawdata_showup$stay_totaldays)
@@ -175,99 +180,166 @@ for(i in (1:length(rawdata_showup$stay_totaldays))){
   
 }
 
+```
+
+Auslastungen berechnen
+```{r }
+
 Auslastung = data.frame(Datum = seq(as.Date(min(rawdata_showup$checkin_date)), 
                  as.Date(max(rawdata_showup$reservation_status_date)), 
                  by="days"))
+
+AuslastungResort = data.frame(Datum = seq(as.Date(min(rawdata_showup$checkin_date)), 
+                 as.Date(max(rawdata_showup$reservation_status_date)), 
+                 by="days"))
+AuslastungLis = data.frame(Datum = seq(as.Date(min(rawdata_showup$checkin_date)), 
+                 as.Date(max(rawdata_showup$reservation_status_date)), 
+                 by="days"))
+
+
+
+
 room_types= sort(unique(rawdata_showup$assigned_room_type))
 
-Auslastung$A = 0;
-Auslastung$B = 0;
-Auslastung$C = 0;
-Auslastung$D = 0;
-Auslastung$E = 0;
-Auslastung$F = 0;
-Auslastung$G = 0;
-Auslastung$H = 0;
-Auslastung$I = 0;
-Auslastung$K = 0;
+############   Auslastung Resort   ###############################
+##Spalten setzen für
+#Zimmertypen
+AuslastungResort$A = 0;
+AuslastungResort$B = 0;
+AuslastungResort$C = 0;
+AuslastungResort$D = 0;
+AuslastungResort$E = 0;
+AuslastungResort$F = 0;
+AuslastungResort$G = 0;
+AuslastungResort$H = 0;
+AuslastungResort$I = 0;
+AuslastungResort$K = 0;
 
+#Essenswahl
+AuslastungResort$brkfast= 0;
+AuslastungResort$lunch = 0;
+AuslastungResort$dinner = 0;
 
-Auslastung$ZimAuslResort= 0
+#Auslastung
+AuslastungResort$ZimAusl= 0
 
 rawdata_showup_resort = rawdata_showup[rawdata_showup$hotel == "Resort Hotel",]
 
 
 for(i in (1:length(rawdata_showup_resort$stay_totaldays))){
   
-idx = which(Auslastung$Datum == rawdata_showup_resort$checkin_date[i])
+idx = which(AuslastungResort$Datum == rawdata_showup_resort$checkin_date[i])
 
-#zählen welche Zimmetypen gebucht worden
-switch(rawdata_showup_resort$assigned_room_type[i], 
-       "A" = {Auslastung$A[idx] = Auslastung$A[idx]+1},
-       "B" = {Auslastung$B[idx] = Auslastung$B[idx]+1},
-       "C" = {Auslastung$C[idx] = Auslastung$C[idx]+1},
-       "D" = {Auslastung$D[idx] = Auslastung$D[idx]+1},
-       "E" = {Auslastung$E[idx] = Auslastung$E[idx]+1},
-       "F" = {Auslastung$F[idx] = Auslastung$F[idx]+1},
-       "G" = {Auslastung$G[idx] = Auslastung$G[idx]+1},
-       "H" = {Auslastung$H[idx] = Auslastung$H[idx]+1},
-       "I" = {Auslastung$I[idx] = Auslastung$I[idx]+1},
-       "K" = {Auslastung$K[idx] = Auslastung$K[idx]+1}
-       
-)
 
   
   for (j in idx:(idx+rawdata_showup_resort$stay_totaldays[i]-1)){
     
-  Auslastung$ZimAuslResort[j] = Auslastung$ZimAuslResort[j]+1;
+    #zählen welche Zimmetypen gebucht worden
+    switch(rawdata_showup_resort$assigned_room_type[i], 
+           "A" = {AuslastungResort$A[j] = AuslastungResort$A[j]+1},
+           "B" = {AuslastungResort$B[j] = AuslastungResort$B[j]+1},
+           "C" = {AuslastungResort$C[j] = AuslastungResort$C[j]+1},
+           "D" = {AuslastungResort$D[j] = AuslastungResort$D[j]+1},
+           "E" = {AuslastungResort$E[j] = AuslastungResort$E[j]+1},
+           "F" = {AuslastungResort$F[j] = AuslastungResort$F[j]+1},
+           "G" = {AuslastungResort$G[j] = AuslastungResort$G[j]+1},
+           "H" = {AuslastungResort$H[j] = AuslastungResort$H[j]+1},
+           "I" = {AuslastungResort$I[j] = AuslastungResort$I[j]+1},
+           "K" = {AuslastungResort$K[j] = AuslastungResort$K[j]+1} )
+    
+    #zählen wie viel Essen pro Tag benötigt wurde
+    switch(rawdata_showup_resort$meal[i], 
+           "BB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+1},
+           
+           "HB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+1;
+                   AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+1},
+           
+           "FB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+1;
+                   AuslastungResort$lunch[j] = AuslastungResort$lunch[j]+1;
+                   AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+1},
+           
+           "SC" = NA )
+
+    
+  AuslastungResort$ZimAusl[j] = AuslastungResort$ZimAusl[j]+1;
   }
   
   
 }
 
+Auslastung$ZimAuslResort = AuslastungResort$ZimAusl;
 
-#Aulastung Lissabon
+
+#####################   Auslastung Lissabon   ###############################
+##Spalten setzen für
+#Zimmertypen
+AuslastungLis$A = 0;
+AuslastungLis$B = 0;
+AuslastungLis$C = 0;
+AuslastungLis$D = 0;
+AuslastungLis$E = 0;
+AuslastungLis$F = 0;
+AuslastungLis$G = 0;
+AuslastungLis$H = 0;
+AuslastungLis$I = 0;
+AuslastungLis$K = 0;
+
+#Essenswahl
+AuslastungLis$brkfast= 0;
+AuslastungLis$lunch = 0;
+AuslastungLis$dinner = 0;
+
 rawdata_showup_Lis = rawdata_showup[rawdata_showup$hotel == "City Hotel",]
 
-Auslastung$ZimAuslLis= 0
+AuslastungLis$ZimAusl= 0
 
 for(i in (1:length(rawdata_showup_Lis$stay_totaldays))){
   
-idx = which(Auslastung$Datum == rawdata_showup_Lis$checkin_date[i])
+idx = which(AuslastungLis$Datum == rawdata_showup_Lis$checkin_date[i])
 
-#zählen welche Zimmetypen gevßbucht worden
-switch(rawdata_showup_resort$assigned_room_type[i], 
-       "A" = {Auslastung$A[idx] = Auslastung$A[idx]+1},
-       "B" = {Auslastung$B[idx] = Auslastung$B[idx]+1},
-       "C" = {Auslastung$C[idx] = Auslastung$C[idx]+1},
-       "D" = {Auslastung$D[idx] = Auslastung$D[idx]+1},
-       "E" = {Auslastung$E[idx] = Auslastung$E[idx]+1},
-       "F" = {Auslastung$F[idx] = Auslastung$F[idx]+1},
-       "G" = {Auslastung$G[idx] = Auslastung$G[idx]+1},
-       "H" = {Auslastung$H[idx] = Auslastung$H[idx]+1},
-       "I" = {Auslastung$I[idx] = Auslastung$I[idx]+1},
-       "K" = {Auslastung$K[idx] = Auslastung$K[idx]+1}
-       
-)
+
   
   for (j in idx:(idx+rawdata_showup_Lis$stay_totaldays[i]-1)){
     
-  Auslastung$ZimAuslLis[j] = Auslastung$ZimAuslLis[j]+1;
+  AuslastungLis$ZimAusl[j] = AuslastungLis$ZimAusl[j]+1;
+  
+  #zählen welche Zimmetypen geßbucht worden
+    switch(rawdata_showup_Lis$assigned_room_type[i], 
+           "A" = {AuslastungLis$A[j] = AuslastungLis$A[j]+1},
+           "B" = {AuslastungLis$B[j] = AuslastungLis$B[j]+1},
+           "C" = {AuslastungLis$C[j] = AuslastungLis$C[j]+1},
+           "D" = {AuslastungLis$D[j] = AuslastungLis$D[j]+1},
+           "E" = {AuslastungLis$E[j] = AuslastungLis$E[j]+1},
+           "F" = {AuslastungLis$F[j] = AuslastungLis$F[j]+1},
+           "G" = {AuslastungLis$G[j] = AuslastungLis$G[j]+1},
+           "H" = {AuslastungLis$H[j] = AuslastungLis$H[j]+1},
+           "I" = {AuslastungLis$I[j] = AuslastungLis$I[j]+1},
+           "K" = {AuslastungLis$K[j] = AuslastungLis$K[j]+1}
+           
+    )
+    
+    #zählen wie viel Essen pro Tag benötigt wurde
+    switch(rawdata_showup_Lis$meal[i], 
+           "BB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+1},
+           
+           "HB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+1;
+                   AuslastungLis$dinner[j] = AuslastungLis$dinner[j]+1},
+           
+           "FB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+1;
+                   AuslastungLis$lunch[j] = AuslastungLis$lunch[j]+1;
+                   AuslastungLis$dinner[j] = AuslastungLis$dinner[j]+1},
+           
+           "SC" = NA )
   }
   
   
 }
 
-#beide mega schllecht ausgelastet! Stimmt so?
+Auslastung$ZimAuslLis = AuslastungLis$ZimAusl;
+
+#beide mega schlecht ausgelastet! Stimmt so?
 summary(Auslastung$ZimAuslLis)
 summary(Auslastung$ZimAuslResort)
 
 
-#Datenbereinigung
-clndata = rawdata
-#Buchungen löschen, die keine Anzahl an Tagen haben
-clndata = clndata[!(clndata$stay_totaldays == 0),]
-
-#Buchungen löschen bei denen keine Gastanzahl gegeben ist
-clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
 ```
