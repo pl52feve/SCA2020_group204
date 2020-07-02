@@ -373,6 +373,7 @@ distribution_channel
 
 ```
 
+
 ```{r }
 #Kapazitäten der beiden Hotels speichern
 capLis = data.frame(Zimmer = 403,
