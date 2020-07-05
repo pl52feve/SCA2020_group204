@@ -20,7 +20,7 @@ library("knitr")
 ```
 
 
-Daten einlesen
+Für die Bearbeitung der Daten werden sie zunächst eingelesen und die Struktur und Zusammenfassung gezeigt.
 ```{r }
 rawdata = read.csv("data_sss.csv")
 
@@ -30,6 +30,32 @@ str(rawdata)
 
 cat("\n\nZusammenfassung:\n\n")
 summary(rawdata)
+
+
+Sys.setlocale("LC_ALL","English")
+rawdata$checkin_date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")
+
+rawdata$Period <- format(as.Date(rawdata$checkin_date), "%Y-%m")
+
+#0–6 day of the week, starting on Sunday.
+rawdata$wkday=as.POSIXlt(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")$wday
+
+#für einfachere Nutzung wird Sonntag zu 7 gesetzt
+rawdata$wkday[rawdata$wkday==0] = 7
+#check for weekend (5,6,7)
+rawdata$wkend = rawdata$wkday > 4
+
+#Kapazitäten der beiden Hotels speichern
+capLis = data.frame(Zimmer = 403,
+                    Parkpl = 20,
+                    Sitzpl = 200,
+                    Babysitzpl = 20)
+
+capAlga = data.frame(Zimmer = 318,
+                    Parkpl = 50,
+                    Sitzpl = 800,
+                    Babysitzpl = 10)
+
 ```
 
 Daten bereinigen
@@ -43,9 +69,6 @@ clndata$is_repeated_guest <- as.integer(clndata$is_repeated_guest)
 
 clndata$stays_in_nights = clndata$stays_in_week_nights + clndata$stays_in_weekend_nights
 
-clndatacity = subset(clndata, hotel== "Resort Hotel")
-clndataresort = subset(clndata, hotel== "City Hotel")
-
 
 #was ist mit Typ undefined?
 unique(rawdata$market_segment)
@@ -57,99 +80,99 @@ unique(rawdata$country) #hier heißts NULL
 unique(rawdata$reserved_room_type)
 unique(rawdata$assigned_room_type)
 
-#Kinder oder Babies ohne Erwachsenen da?
-rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
 
-#Buchungen löschen, die keine Anzahl an Tagen haben
-clndata = clndata[!(clndata$stay_totaldays == 0),]
+#Buchungen löschen, die keine Anzahl an Tagen haben - geht so nicht
+#clndata = clndata[!(clndata$stay_totaldays == 0),]
 
 #Buchungen löschen bei denen keine Gastanzahl gegeben ist
 clndata = clndata[!(clndata$adults == 0 & clndata$children == 0),]
+
+#Kinder oder Babies ohne Erwachsenen da?
+clndata = clndata[!(clndata$adults == 0 & (clndata$children != 0 | clndata$babies !=0)),]
+
+clndatacity = subset(clndata, hotel== "Resort Hotel")
+clndataresort = subset(clndata, hotel== "City Hotel")
 ```
 
 ```{r }
-#Perioden erstellen
-
-# Spalte Periode in clndata_Period erstellen
-clndata <- tidyr::unite(clndata, Period, "arrival_date_day_of_month","arrival_date_month","arrival_date_year","arrival_date_day_of_month", sep ="-", remove= FALSE)
-
-clndata$Period = as.Date(clndata$Period,format='%d-%B-%Y')
-
-clndata$Period <- format(as.Date(clndata$Period), "%Y-%m")
-
-
-# Spalte Periode in clndata_Period erstellen
-clndatacity <- tidyr::unite(clndatacity, Period, "arrival_date_day_of_month","arrival_date_month","arrival_date_year","arrival_date_day_of_month", sep ="-", remove= FALSE)
-
-clndatacity$Period = as.Date(clndatacity$Period,format='%d-%B-%Y')
-
-clndatacity$Period <- format(as.Date(clndatacity$Period), "%Y-%m")
-
-
-# Spalte Periode in clndata_Period erstellen
-clndataresort<- tidyr::unite(clndataresort, Period, "arrival_date_day_of_month","arrival_date_month","arrival_date_year","arrival_date_day_of_month", sep ="-", remove= FALSE)
-
-clndataresort$Period = as.Date(clndataresort$Period,format='%d-%B-%Y')
-
-clndataresort$Period <- format(as.Date(clndataresort$Period), "%Y-%m")
 #aggregate Funktionen
 adr_roomtype = aggregate(adr ~ reserved_room_type,data=clndata, mean)
 adr_roomtype
+
 adr_assigned_roomtype = aggregate(adr ~ assigned_room_type,data=clndata, mean)
 adr_assigned_roomtype
+
 agent = aggregate(is_canceled ~ agent,data=clndata, mean)
 agent
+
 company = aggregate(is_canceled ~ company,data=clndata, mean)
 company
+
 deposit = aggregate(is_canceled ~ deposit_type,data=clndata, mean)
 deposit
+
 customer_type = aggregate(is_canceled ~ customer_type,data=clndata, mean)
 customer_type
+
 previous_bookings_not_canceled = aggregate(is_canceled ~ previous_bookings_not_canceled,data=clndata, mean)
 previous_bookings_not_canceled
-is_repeated_guest = aggregate(is_canceled ~ is_repeated_guest,data=clndata, mean)
+
+is_repeated_guest =aggregate(is_canceled ~ is_repeated_guest,data=clndata, mean)
 is_repeated_guest
+
 distribution_channel = aggregate(is_canceled ~ distribution_channel,data=clndata, mean)
 distribution_channel
+
 market_segment = aggregate(is_canceled ~ market_segment,data=clndata, mean)
 market_segment
+
 meal = aggregate(is_canceled ~ meal,data=clndata, mean)
 meal
+
 country = aggregate(is_canceled ~ country,data=clndata, mean)
-country
 country <- country[order(country$is_canceled,decreasing=T),]
 head(country[c("country","is_canceled")],5)
+
 arrival_date_year = aggregate(is_canceled ~ arrival_date_year,data=clndata, mean)
 arrival_date_year
+
 arrival_date_month = aggregate(is_canceled ~ arrival_date_month,data=clndata, mean)
 arrival_date_month
+
 hotel = aggregate(is_canceled ~ hotel,data=clndata, mean)
 hotel
+
 AggregateIFR = aggregate(clndata$adr, list(clndata$reserved_room_type,clndata$adults), mean)
 AggregateIFR
 #median passt sehr gut
+
 AggregateIFR1 = aggregate(clndatacity$adr, list(clndatacity$reserved_room_type,clndatacity$adults), median)
 AggregateIFR1
+
 AggregateIFR2 = aggregate(clndatacity$adr, list(clndatacity$reserved_room_type,clndatacity$adults,clndatacity$children,clndatacity$meal), median)
 AggregateIFR2
 AggregateIFR2 <- AggregateIFR2[order(AggregateIFR2$Group.1,decreasing=FALSE),]
 colnames(AggregateIFR2) = c("Room_Type","adults","children","meal","adr")
-AggregateIFR2 <- subset(AggregateIFR2, !meal
- == "Undefined")
+AggregateIFR2 <- subset(AggregateIFR2, !meal == "Undefined")
 AggregateIFR2 <- subset(AggregateIFR2, !adults == "0")
 AggregateIFR2 <- subset(AggregateIFR2, !adr == "0")
+
+##### was ist das hier? ####
 kable(AggregateIFR2, caption = "AggregateOTDShangh")
-clndatacity <- subset(clndatacity, !meal
- == "Undefined")
+###########################
+
+clndatacity <- subset(clndatacity, !meal== "Undefined")
 clndatacity <- subset(clndatacity, !adults == "0")
 clndatacity <- subset(clndatacity, !adr == "0")
+
 require(dplyr)
 clndatacity %>% count(reserved_room_type,adults,children,meal)
 # Anzahl einfügen# room-types Kosten City
 
-#clndatacityadr = subset(clndatacity, !meal == "Undefined")
+clndatacityadr = subset(clndatacity, !meal == "Undefined")
 clndatacityadr <- subset(clndatacityadr, !adults == "0")
 clndatacityadr <- subset(clndatacityadr, !adr == "0")
+
 
 require(dplyr)
 count_room_types = clndatacityadr %>% count(reserved_room_type,adults,children,meal)
@@ -165,8 +188,7 @@ kable(overview_room_types_city, caption = "overview_room_types_city")
 
 
 
-
-#clndataresortadr = subset(clndataresort, !meal== "Undefined")
+clndataresortadr = subset(clndataresort, !meal== "Undefined")
 clndataresortadr <- subset(clndataresortadr, !adults == "0")
 clndataresortadr <- subset(clndataresortadr, !adr == "0")
 
@@ -361,57 +383,21 @@ distribution_channel
 
 
 ```{r }
-#Kapazitäten der beiden Hotels speichern
-capLis = data.frame(Zimmer = 403,
-                    Parkpl = 20,
-                    Sitzpl = 200,
-                    Babysitzpl = 20)
-
-capAlga = data.frame(Zimmer = 318,
-                    Parkpl = 50,
-                    Sitzpl = 800,
-                    Babysitzpl = 10)
-
-
-#was ist mit Typ undefined?
-unique(rawdata$market_segment)
-unique(rawdata$meal)
-unique(rawdata$distribution_channel)
-unique(rawdata$country) #hier heißts NULL
-
-#andere Anzahl belegter Raumtypen als reservierte?
-unique(rawdata$reserved_room_type)
-unique(rawdata$assigned_room_type)
-
-#Kinder oder Babies ohne Erwachsenen da?
-rawdata[rawdata$adults == 0 & (rawdata$children != 0 | rawdata$babies !=0),]
-
-Sys.setlocale("LC_ALL","English")
-rawdata$checkin_date = as.Date(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")
-
-#0–6 day of the week, starting on Sunday.
-rawdata$wkday=as.POSIXlt(paste(rawdata$arrival_date_day_of_month, rawdata$arrival_date_month, rawdata$arrival_date_year,sep = "/"),format="%d/%B/%Y")$wday
-
-#für einfachere Nutzung wird Sonntag zu 7 gesetzt
-rawdata$wkday[rawdata$wkday==0] = 7
-#check for weekend (5,6,7)
-rawdata$wkend = rawdata$wkday > 4
 
 #nur die Gäste, die tatsächlich gekommen sind
-rawdata_showup = rawdata[rawdata$reservation_status== "Check-Out",]
+clndata_showup = clndata[clndata$reservation_status== "Check-Out",]
 
+clndata_showup$totalNr_guest = clndata_showup$adults +  clndata_showup$children +  clndata_showup$babies;
 
 #bei Unterschied gleich null trotzdem auf 1 setzen, da Zimmer auch ohne Übernachtung bis zum nächsten Tag belegt ist?
-rawdata_showup$stay_totaldays=as.numeric(as.Date(rawdata_showup$reservation_status_date)-rawdata_showup$checkin_date)
-#komische hohe Werte!
-unique(rawdata_showup$stay_totaldays)
+clndata_showup$stay_totaldays=as.numeric(as.Date(clndata_showup$reservation_status_date)-clndata_showup$checkin_date)
 
 #check for correctness of Weekend/weekday entries
-for(i in (1:length(rawdata_showup$stay_totaldays))){
+for(i in (1:length(clndata_showup$stay_totaldays))){
   wkendcntr=0
   wkdaycntr=0
-  checkin_wkday = rawdata_showup$wkday[i]
-  total = rawdata_showup$stay_totaldays[i]
+  checkin_wkday = clndata_showup$wkday[i]
+  total = clndata_showup$stay_totaldays[i]
   cmpltweeks = floor((checkin_wkday+total)/7)
   rest = (checkin_wkday+total) %% 7
   
@@ -420,31 +406,33 @@ for(i in (1:length(rawdata_showup$stay_totaldays))){
     wkendcntr= wkendcntr+1
   }
   
-  rawdata_showup$stays_in_week_nights_corr[i] = total-wkendcntr
-  rawdata_showup$stays_in_weekend_nights_corr[i] = wkendcntr
+  clndata_showup$stays_in_week_nights_corr[i] = total-wkendcntr
+  clndata_showup$stays_in_weekend_nights_corr[i] = wkendcntr
   
 }
 
 ```
 
-Auslastungen berechnen
+In diesem Abschnitt wird die Auslastung der Hotels berechnet. Das Vorgehen ist dabei so, dass zunächst drei Data Frames mit allen Daten vom frühestens Check-in Datum bis zum spätesten Check-out Datum gefüllt werden. So können die Daten für einfach für jeden Tag ausgelesen werden. Die Anzahl der Nächte wurde bereits im ersten Abschnitt erstellt, wo vom Check-out Datum das Check-in Datum abgezogen wurde. Als Beispiel: Die Gäste reisen am  01.08.2015 an und ihr Check-out Datum ist der 07.08.2015. Das bedeutet sie bleiben 6 Nächte, was der Wert ist, der für jede Buchung in "Stay_totaldays" gespeichert ist. Die erste for SChleife mit Laufvariable i durchläuft alle Buchungen. Zunächst wird das Checkin - Datum dem entsprechenden Datum in der Auslastungstabelle zugeordnet und in idx gespeichert.Nun werden in der zweiten Schleife alle Werte für die komplette Aufenthaltsdauer (also von idx bis idx+stay_totaldays) auf die Werte in der Aufenthaltstabelle addiert. 
+
+Wichtig ist hierbei zu erwähnen, dass ich somit immer nur bis zum Datum vor Checkout aufaddiere, da das Zimmer am Checkout-Datum ja schon neu belegt werden kann. Es ist jedoch in einer extra Variable gespeichert, wie viele Zimmer an diesem Tag ein und ausgechekt werden.
 ```{r }
 
-Auslastung = data.frame(Datum = seq(as.Date(min(rawdata_showup$checkin_date)), 
-                 as.Date(max(rawdata_showup$reservation_status_date)), 
+Auslastung = data.frame(Datum = seq(as.Date(min(clndata_showup$checkin_date)), 
+                 as.Date(max(clndata_showup$reservation_status_date)), 
                  by="days"))
 
-AuslastungResort = data.frame(Datum = seq(as.Date(min(rawdata_showup$checkin_date)), 
-                 as.Date(max(rawdata_showup$reservation_status_date)), 
+AuslastungResort = data.frame(Datum = seq(as.Date(min(clndata_showup$checkin_date)), 
+                 as.Date(max(clndata_showup$reservation_status_date)), 
                  by="days"))
-AuslastungLis = data.frame(Datum = seq(as.Date(min(rawdata_showup$checkin_date)), 
-                 as.Date(max(rawdata_showup$reservation_status_date)), 
+AuslastungLis = data.frame(Datum = seq(as.Date(min(clndata_showup$checkin_date)), 
+                 as.Date(max(clndata_showup$reservation_status_date)), 
                  by="days"))
 
 
 
 
-room_types= sort(unique(rawdata_showup$assigned_room_type))
+room_types= sort(unique(clndata_showup$assigned_room_type))
 
 ############   Auslastung Resort   ###############################
 ##Spalten setzen für
@@ -460,27 +448,41 @@ AuslastungResort$H = 0;
 AuslastungResort$I = 0;
 AuslastungResort$K = 0;
 
-#Essenswahl
+#Essenswahl+ Stühle
 AuslastungResort$brkfast= 0;
 AuslastungResort$lunch = 0;
 AuslastungResort$dinner = 0;
 
+AuslastungResort$chairs = 0;
+AuslastungResort$babychairs = 0;
+
 #Auslastung
-AuslastungResort$ZimAusl= 0
+AuslastungResort$ZimAusl= 0;
+AuslastungResort$guestNr= 0;
+AuslastungResort$carpark= 0;
 
-rawdata_showup_resort = rawdata_showup[rawdata_showup$hotel == "Resort Hotel",]
+#Fluktuation
+AuslastungResort$checkins = 0;
+AuslastungResort$checkouts = 0;
+
+clndata_showup_resort = clndata_showup[clndata_showup$hotel == "Resort Hotel",]
 
 
-for(i in (1:length(rawdata_showup_resort$stay_totaldays))){
+for(i in (1:length(clndata_showup_resort$stay_totaldays))){
   
-idx = which(AuslastungResort$Datum == rawdata_showup_resort$checkin_date[i])
+idx = which(AuslastungResort$Datum == clndata_showup_resort$checkin_date[i])
 
+guestNr = clndata_showup_resort$totalNr_guest[i];
+
+babies = clndata_showup_resort$babies[i];
+
+adultChild = guestNr - babies;
 
   
-  for (j in idx:(idx+rawdata_showup_resort$stay_totaldays[i]-1)){
+  for (j in idx:(idx+clndata_showup_resort$stay_totaldays[i])){
     
     #zählen welche Zimmetypen gebucht worden
-    switch(rawdata_showup_resort$assigned_room_type[i], 
+    switch(clndata_showup_resort$assigned_room_type[i], 
            "A" = {AuslastungResort$A[j] = AuslastungResort$A[j]+1},
            "B" = {AuslastungResort$B[j] = AuslastungResort$B[j]+1},
            "C" = {AuslastungResort$C[j] = AuslastungResort$C[j]+1},
@@ -492,27 +494,86 @@ idx = which(AuslastungResort$Datum == rawdata_showup_resort$checkin_date[i])
            "I" = {AuslastungResort$I[j] = AuslastungResort$I[j]+1},
            "K" = {AuslastungResort$K[j] = AuslastungResort$K[j]+1} )
     
-    #zählen wie viel Essen pro Tag benötigt wurde
-    switch(rawdata_showup_resort$meal[i], 
-           "BB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+1},
+    #am ersten Tag kann kein Frühstück eingenommen werden
+    if (j == idx){
+      switch(clndata_showup_resort$meal[i], 
+           "BB" = NA,
            
-           "HB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+1;
-                   AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+1},
+           "HB" = {AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+guestNr
+                   
+                  AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                  AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
            
-           "FB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+1;
-                   AuslastungResort$lunch[j] = AuslastungResort$lunch[j]+1;
-                   AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+1},
+           "FB" = {AuslastungResort$lunch[j] = AuslastungResort$lunch[j]+guestNr;
+                   AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+guestNr
+                   
+                   AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                  AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
            
            "SC" = NA )
+    }
+    
+    #am letzten Tag kann nur noch Frühstück eingenommen werden
+    else if (j == idx+clndata_showup_resort$stay_totaldays[i] ){
+      switch(clndata_showup_resort$meal[i], 
+           "BB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+guestNr
+           
+                  AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                  AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
+           
+           "HB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+guestNr;
+                   
+                  AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                  AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
+           
+           "FB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+guestNr;
+                   
+                   AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                   AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
+           
+           "SC" = NA )
+    }
+    
+    else{
+    
+    #zählen wie viel Essen pro Tag benötigt wurde
+    switch(clndata_showup_resort$meal[i], 
+           "BB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+guestNr
+           
+                  AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                  AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
+           
+           "HB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+guestNr;
+                   AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+guestNr
+                   
+                  AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                  AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
+           
+           "FB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+guestNr;
+                   AuslastungResort$lunch[j] = AuslastungResort$lunch[j]+guestNr;
+                   AuslastungResort$dinner[j] = AuslastungResort$dinner[j]+guestNr
+                   
+                   AuslastungResort$chairs[j] = AuslastungResort$chairs[j]+adultChild
+                  AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
+           
+           "SC" = NA )
+    }
+    
+    
+  AuslastungResort$carpark[j] = AuslastungResort$carpark[j]
+                                +clndata_showup_resort$required_car_parking_spaces[i];
 
+  AuslastungResort$guestNr[j] = AuslastungResort$guestNr[j]+guestNr;
     
   AuslastungResort$ZimAusl[j] = AuslastungResort$ZimAusl[j]+1;
   }
-  
+
+AuslastungResort$checkins[idx] = AuslastungResort$checkins[idx] +1;
+AuslastungResort$checkouts[idx+clndata_showup_resort$stay_totaldays[i]] = AuslastungResort$checkouts[idx+clndata_showup_resort$stay_totaldays[i]] +1;
+
   
 }
 
-Auslastung$ZimAuslResort = AuslastungResort$ZimAusl;
 
 
 #####################   Auslastung Lissabon   ###############################
@@ -534,22 +595,29 @@ AuslastungLis$brkfast= 0;
 AuslastungLis$lunch = 0;
 AuslastungLis$dinner = 0;
 
-rawdata_showup_Lis = rawdata_showup[rawdata_showup$hotel == "City Hotel",]
+AuslastungLis$chairs = 0;
+AuslastungLis$babychairs = 0;
 
-AuslastungLis$ZimAusl= 0
+#Aulastung
+AuslastungLis$ZimAusl= 0;
+AuslastungLis$guestNr= 0;
+AuslastungLis$carpark= 0;
 
-for(i in (1:length(rawdata_showup_Lis$stay_totaldays))){
+clndata_showup_Lis = clndata_showup[clndata_showup$hotel == "City Hotel",]
+
+
+
+for(i in (1:length(clndata_showup_Lis$stay_totaldays))){
   
-idx = which(AuslastungLis$Datum == rawdata_showup_Lis$checkin_date[i])
+idx = which(AuslastungLis$Datum == clndata_showup_Lis$checkin_date[i])
 
-
+guestNr = clndata_showup_Lis$totalNr_guest[i];
   
-  for (j in idx:(idx+rawdata_showup_Lis$stay_totaldays[i]-1)){
-    
-  AuslastungLis$ZimAusl[j] = AuslastungLis$ZimAusl[j]+1;
+  for (j in idx:(idx+clndata_showup_Lis$stay_totaldays[i]-1)){
+
   
   #zählen welche Zimmetypen geßbucht worden
-    switch(rawdata_showup_Lis$assigned_room_type[i], 
+    switch(clndata_showup_Lis$assigned_room_type[i], 
            "A" = {AuslastungLis$A[j] = AuslastungLis$A[j]+1},
            "B" = {AuslastungLis$B[j] = AuslastungLis$B[j]+1},
            "C" = {AuslastungLis$C[j] = AuslastungLis$C[j]+1},
@@ -564,27 +632,124 @@ idx = which(AuslastungLis$Datum == rawdata_showup_Lis$checkin_date[i])
     )
     
     #zählen wie viel Essen pro Tag benötigt wurde
-    switch(rawdata_showup_Lis$meal[i], 
-           "BB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+1},
+    switch(clndata_showup_Lis$meal[i], 
+           "BB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+guestNr
            
-           "HB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+1;
-                   AuslastungLis$dinner[j] = AuslastungLis$dinner[j]+1},
+                   AuslastungLis$chairs[j] = AuslastungLis$chairs[j]+adultChild
+                  AuslastungLis$babychairs[j] = AuslastungLis$babychairs[j]+babies},
            
-           "FB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+1;
-                   AuslastungLis$lunch[j] = AuslastungLis$lunch[j]+1;
-                   AuslastungLis$dinner[j] = AuslastungLis$dinner[j]+1},
+           "HB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+guestNr;
+                   AuslastungLis$dinner[j] = AuslastungLis$dinner[j]+guestNr
+                   
+                   AuslastungLis$chairs[j] = AuslastungLis$chairs[j]+adultChild
+                  AuslastungLis$babychairs[j] = AuslastungLis$babychairs[j]+babies},
+           
+           "FB" = {AuslastungLis$brkfast[j] = AuslastungLis$brkfast[j]+guestNr;
+                   AuslastungLis$lunch[j] = AuslastungLis$lunch[j]+guestNr;
+                   AuslastungLis$dinner[j] = AuslastungLis$dinner[j]+guestNr
+                   
+                   AuslastungLis$chairs[j] = AuslastungLis$chairs[j]+adultChild
+                  AuslastungLis$babychairs[j] = AuslastungLis$babychairs[j]+babies},
            
            "SC" = NA )
   }
+
+  AuslastungLis$guestNr[j] = AuslastungLis$guestNr[j]+guestNr;
+      
+  AuslastungLis$ZimAusl[j] = AuslastungLis$ZimAusl[j]+1;
   
+   AuslastungLis$carpark[j] = AuslastungLis$carpark[j]+clndata_showup_Lis$required_car_parking_spaces[i];
   
 }
 
-Auslastung$ZimAuslLis = AuslastungLis$ZimAusl;
 
-#beide mega schlecht ausgelastet! Stimmt so?
-summary(Auslastung$ZimAuslLis)
-summary(Auslastung$ZimAuslResort)
+#####################   Gesamt Auslastung   ###############################
+Auslastung$ZimAusl = AuslastungLis$ZimAusl + AuslastungResort$ZimAusl;
+
+Auslastung$A = AuslastungLis$A +AuslastungResort$A;
+Auslastung$B = AuslastungLis$B +AuslastungResort$B;
+Auslastung$C = AuslastungLis$C +AuslastungResort$C;
+Auslastung$D = AuslastungLis$D +AuslastungResort$D;
+Auslastung$E = AuslastungLis$E +AuslastungResort$E;
+Auslastung$F = AuslastungLis$F +AuslastungResort$F;
+Auslastung$G = AuslastungLis$G +AuslastungResort$G;
+Auslastung$H = AuslastungLis$H +AuslastungResort$H;
+Auslastung$I = AuslastungLis$I +AuslastungResort$I;
+Auslastung$K = AuslastungLis$K +AuslastungResort$K;
+
+Auslastung$brkfast = AuslastungLis$brkfast +AuslastungResort$brkfast;
+Auslastung$lunch = AuslastungLis$lunch +AuslastungResort$lunch;
+Auslastung$dinner = AuslastungLis$dinner +AuslastungResort$dinner;
+
+Auslastung$chairs = AuslastungLis$chairs +AuslastungResort$chairs;
+Auslastung$babychairs = AuslastungLis$babychairs +AuslastungResort$babychairs;
+
+Auslastung$guestNr = AuslastungLis$guestNr +AuslastungResort$guestNr;
+Auslastung$carpark = AuslastungLis$carpark +AuslastungResort$carpark
+
+```
+
+
+```{r }
+ggplot(data = NULL, aes(ymin = 0, ymax = 0, group =1)) + 
+  
+  # Erste Linie hinzufuegen
+  geom_line(data=Auslastung, aes(x = Datum,
+                                y = ZimAusl, 
+                                colour = 'overall')) +
+  
+  # Zweite Linie hinzufuegen
+  geom_line(data=AuslastungLis, aes(x = Datum,
+                                y = ZimAusl, 
+                                colour = 'city')) +
+  
+  # dritte Linie hinzufuegen
+  geom_line(data=AuslastungResort, aes(x = Datum,
+                                    y = ZimAusl,
+                                    colour = 'resort')) + ggtitle("Comparison Zimmer Auslastung") + xlab("Datum")+ ylab("Zimmer Auslastung") +
+  
+  # Farben fuer Beschriftungen festlegen
+  scale_colour_manual(breaks = c("overall", "city","resort"), values = c("black", "blue","red"))  + theme(axis.text.x = element_text(size = 7, angle=270, hjust=1))
+```
+
+```{r }
+ggplot(data = NULL, aes(ymin = 0, ymax = 0, group =1)) + 
+  
+  # Erste Linie hinzufuegen
+  geom_line(data=Auslastung, aes(x = Datum,
+                                y = carpark, 
+                                colour = 'overall')) +
+  
+  # Zweite Linie hinzufuegen
+  geom_line(data=AuslastungLis, aes(x = Datum,
+                                y = carpark, 
+                                colour = 'city')) +
+  
+  # dritte Linie hinzufuegen
+  geom_line(data=AuslastungResort, aes(x = Datum,
+                                    y = carpark,
+                                    colour = 'resort')) + ggtitle("Comparison Zimmer Auslastung") + xlab("Datum")+ ylab("Zimmer Auslastung") +
+  
+  # Farben fuer Beschriftungen festlegen
+  scale_colour_manual(breaks = c("overall", "city","resort"), values = c("black", "blue","red"))  + theme(axis.text.x = element_text(size = 7, angle=270, hjust=1))
+```
+
+Vorüberlegungen: 
+"No-Shows" sind sicherer Verlust
+"Storno" Material+Personalverlust, wenn kürzer als einen Monat vorher
+         Essensverlust, wenn kürzer als eine Woche
+```{r }
+clndata_noshow = clndata[clndata$reservation_status== "No-Show",]
+clndata_storno = clndata[clndata$reservation_status == "Canceled",]
+clndata_storno$storno_Vorlauf = as.numeric(clndata_storno$checkin_date - as.Date(clndata_storno$reservation_status_date))
+
+#Verluste für Material+Personal
+#pro Bchung gerechnet
+gesamtVerlust_MatPers = dim(clndata_noshow)[1] + sum(clndata_storno$storno_Vorlauf <= 30);
+
+#Verluste für Essen
+#nach Mahlzeit und Gastanzahl checken und multiplizieren!
+gesamtVerlust_food = dim(clndata_noshow)[1] + sum(clndata_storno$storno_Vorlauf <= 7)
 
 
 ```
