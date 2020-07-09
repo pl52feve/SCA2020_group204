@@ -48,12 +48,12 @@ rawdata$wkend = rawdata$wkday > 4
 #Kapazitäten der beiden Hotels speichern
 capLis = data.frame(Zimmer = 403,
                     Parkpl = 20,
-                    Sitzpl = 200,
+                    Sitzpl = 400,
                     Babysitzpl = 20)
 
 capAlga = data.frame(Zimmer = 318,
                     Parkpl = 50,
-                    Sitzpl = 800,
+                    Sitzpl = 400,
                     Babysitzpl = 10)
 
 ```
@@ -70,13 +70,7 @@ clndata$is_repeated_guest <- as.integer(clndata$is_repeated_guest)
 clndata$stays_in_nights = clndata$stays_in_week_nights + clndata$stays_in_weekend_nights
 
 
-#was ist mit Typ undefined?
-unique(rawdata$market_segment)
-unique(rawdata$meal)
-unique(rawdata$distribution_channel)
-unique(rawdata$country) #hier heißts NULL
-
-#andere Anzahl belegter Raumtypen als reservierte?
+#andere Anzahl belegter Raumtypen als reservierte? -- Bene Raumtypen
 unique(rawdata$reserved_room_type)
 unique(rawdata$assigned_room_type)
 
@@ -92,6 +86,60 @@ clndata = clndata[!(clndata$adults == 0 & (clndata$children != 0 | clndata$babie
 
 clndatacity = subset(clndata, hotel== "Resort Hotel")
 clndataresort = subset(clndata, hotel== "City Hotel")
+
+################################Tests#################################################################
+undefined_tests = rawdata[rawdata$meal == "Undefined",]
+#summary(undefined_tests)
+
+for (j in 1:8) {
+  undefined_tests = scramble(undefined_tests)
+  for(i in 1:(dim(undefined_tests)[1])){
+    if(all_equal(undefined_tests[i,],undefined_tests[i+1,],ignore_col_order = TRUE, ignore_row_order = TRUE) == TRUE){
+      undefined_tests = undefined_tests[-i,]
+    }
+
+  }
+  
+}
+
+#nur Resort Hotel
+unique(undefined_tests$hotel)
+#fast nur no Deposit
+sum(undefined_tests$deposit_type=="No Deposit")
+#hier nicht so viele Transient
+#sum(undefined_tests$customer_type == "Transient")
+#viele sehr ähnliche Buchungen
+
+#sind nur zwei, werden rausgeschmissen
+dim(rawdata[rawdata$market_segment == "Undefined",])[1]
+clndata = clndata[!(clndata$market_segment == "Undefined"),]
+
+#sind nur fünf Einträge, werden rausgeschmissen
+dim(rawdata[rawdata$distribution_channel == "Undefined",])[1]
+clndata = clndata[!(clndata$distribution_channel == "Undefined"),]
+
+
+dim(rawdata[rawdata$country == "NULL",])[1]
+undefined_tests_cntry = rawdata[rawdata$country == "NULL",]
+
+for (j in 1:8) {
+  undefined_tests_cntry = scramble(undefined_tests_cntry)
+  for(i in 1:(dim(undefined_tests_cntry)[1])){
+    if(all_equal(undefined_tests_cntry[i,],undefined_tests_cntry[i+1,],ignore_col_order = TRUE, ignore_row_order = TRUE) == TRUE){
+      undefined_tests_cntry = undefined_tests_cntry[-i,]
+    }
+
+  }
+  
+}
+
+#fast alles Resort Hotel
+sum(undefined_tests_cntry$hotel == "Resort Hotel")
+#fast alle Transient
+sum(undefined_tests_cntry$customer_type == "Transient")
+#fast alle BB (aber generell haben das viele oder?)
+sum(undefined_tests_cntry$meal == "BB")
+
 ```
 
 ```{r }
@@ -398,8 +446,8 @@ for(i in (1:length(clndata_showup$stay_totaldays))){
   wkdaycntr=0
   checkin_wkday = clndata_showup$wkday[i]
   total = clndata_showup$stay_totaldays[i]
-  cmpltweeks = floor((checkin_wkday+total)/7)
-  rest = (checkin_wkday+total) %% 7
+  cmpltweeks = floor(total/7)
+  rest = (total+checkin_wkday) %% 7
   
   wkendcntr= cmpltweeks*2
   if(rest == 6){
@@ -479,20 +527,8 @@ babies = clndata_showup_resort$babies[i];
 adultChild = guestNr - babies;
 
   
-  for (j in idx:(idx+clndata_showup_resort$stay_totaldays[i])){
+  for (j in idx:(idx+clndata_showup_resort$stay_totaldays[i]-1)){
     
-    #zählen welche Zimmetypen gebucht worden
-    switch(clndata_showup_resort$assigned_room_type[i], 
-           "A" = {AuslastungResort$A[j] = AuslastungResort$A[j]+1},
-           "B" = {AuslastungResort$B[j] = AuslastungResort$B[j]+1},
-           "C" = {AuslastungResort$C[j] = AuslastungResort$C[j]+1},
-           "D" = {AuslastungResort$D[j] = AuslastungResort$D[j]+1},
-           "E" = {AuslastungResort$E[j] = AuslastungResort$E[j]+1},
-           "F" = {AuslastungResort$F[j] = AuslastungResort$F[j]+1},
-           "G" = {AuslastungResort$G[j] = AuslastungResort$G[j]+1},
-           "H" = {AuslastungResort$H[j] = AuslastungResort$H[j]+1},
-           "I" = {AuslastungResort$I[j] = AuslastungResort$I[j]+1},
-           "K" = {AuslastungResort$K[j] = AuslastungResort$K[j]+1} )
     
     #am ersten Tag kann kein Frühstück eingenommen werden
     if (j == idx){
@@ -514,7 +550,7 @@ adultChild = guestNr - babies;
     }
     
     #am letzten Tag kann nur noch Frühstück eingenommen werden
-    else if (j == idx+clndata_showup_resort$stay_totaldays[i] ){
+    else if (j == idx+clndata_showup_resort$stay_totaldays[i]){
       switch(clndata_showup_resort$meal[i], 
            "BB" = {AuslastungResort$brkfast[j] = AuslastungResort$brkfast[j]+guestNr
            
@@ -532,6 +568,28 @@ adultChild = guestNr - babies;
                    AuslastungResort$babychairs[j] = AuslastungResort$babychairs[j]+babies},
            
            "SC" = NA )
+    }
+    
+    #an allen Tagen außer dem letzten wird ganz normal hochgezählt - macht das so Sinn?
+    else if(j != idx+clndata_showup_resort$stay_totaldays[i]){
+    switch(clndata_showup_resort$assigned_room_type[i], 
+           "A" = {AuslastungResort$A[j] = AuslastungResort$A[j]+1},
+           "B" = {AuslastungResort$B[j] = AuslastungResort$B[j]+1},
+           "C" = {AuslastungResort$C[j] = AuslastungResort$C[j]+1},
+           "D" = {AuslastungResort$D[j] = AuslastungResort$D[j]+1},
+           "E" = {AuslastungResort$E[j] = AuslastungResort$E[j]+1},
+           "F" = {AuslastungResort$F[j] = AuslastungResort$F[j]+1},
+           "G" = {AuslastungResort$G[j] = AuslastungResort$G[j]+1},
+           "H" = {AuslastungResort$H[j] = AuslastungResort$H[j]+1},
+           "I" = {AuslastungResort$I[j] = AuslastungResort$I[j]+1},
+           "K" = {AuslastungResort$K[j] = AuslastungResort$K[j]+1} )
+    
+    AuslastungResort$carpark[j] = AuslastungResort$carpark[j]
+                                +clndata_showup_resort$required_car_parking_spaces[i];
+
+    AuslastungResort$guestNr[j] = AuslastungResort$guestNr[j]+guestNr;
+    AuslastungResort$ZimAusl[j] = AuslastungResort$ZimAusl[j]+1;
+      
     }
     
     else{
@@ -560,12 +618,6 @@ adultChild = guestNr - babies;
     }
     
     
-  AuslastungResort$carpark[j] = AuslastungResort$carpark[j]
-                                +clndata_showup_resort$required_car_parking_spaces[i];
-
-  AuslastungResort$guestNr[j] = AuslastungResort$guestNr[j]+guestNr;
-    
-  AuslastungResort$ZimAusl[j] = AuslastungResort$ZimAusl[j]+1;
   }
 
 AuslastungResort$checkins[idx] = AuslastungResort$checkins[idx] +1;
